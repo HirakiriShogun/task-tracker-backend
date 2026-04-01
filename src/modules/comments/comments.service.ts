@@ -50,4 +50,18 @@ export class CommentsService {
       },
     });
   }
+
+  async findByTask(taskId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return this.prisma.comment.findMany({
+      where: { taskId },
+    });
+  }
 }
