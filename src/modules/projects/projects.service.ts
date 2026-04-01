@@ -40,4 +40,34 @@ export class ProjectsService {
       },
     });
   }
+
+  async findAll() {
+    return this.prisma.project.findMany();
+  }
+
+  async findById(id: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return project;
+  }
+
+  async findByWorkspace(workspaceId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    return this.prisma.project.findMany({
+      where: { workspaceId },
+    });
+  }
 }

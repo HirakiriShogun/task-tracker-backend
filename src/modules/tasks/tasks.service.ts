@@ -154,4 +154,34 @@ export class TasksService {
       data: { status: data.status },
     });
   }
+
+  async findAll() {
+    return this.prisma.task.findMany();
+  }
+
+  async findById(id: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return task;
+  }
+
+  async findByProject(projectId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return this.prisma.task.findMany({
+      where: { projectId },
+    });
+  }
 }

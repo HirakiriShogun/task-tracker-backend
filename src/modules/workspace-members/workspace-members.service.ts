@@ -70,4 +70,21 @@ export class WorkspaceMembersService {
       },
     });
   }
+
+  async findByWorkspace(workspaceId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    return this.prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      include: {
+        user: true,
+      },
+    });
+  }
 }
