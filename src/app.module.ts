@@ -4,6 +4,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { UsersModule } from './modules/users/users.module';
+import { WorkspaceMembersModule } from './modules/workspace-members/workspace-members.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 
 @Module({
@@ -11,6 +12,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
     PrismaModule,
     UsersModule,
     WorkspacesModule,
+    WorkspaceMembersModule,
     ProjectsModule,
     TasksModule,
     CommentsModule,
