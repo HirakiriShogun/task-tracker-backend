@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CommentsModule } from './modules/comments/comments.module';
+import { TaskTrackerGraphqlModule } from './modules/graphql/graphql.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { TasksModule } from './modules/tasks/tasks.module';
@@ -16,6 +17,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
     ProjectsModule,
     TasksModule,
     CommentsModule,
+    TaskTrackerGraphqlModule,
   ],
 })
 export class AppModule {}
