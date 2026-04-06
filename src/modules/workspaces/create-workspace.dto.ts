@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateWorkspaceDto {
   @IsString()
@@ -10,5 +10,6 @@ export class CreateWorkspaceDto {
   description: string;
 
   @IsUUID()
-  creatorId: string;
+  @IsOptional()
+  creatorId?: string;
 }

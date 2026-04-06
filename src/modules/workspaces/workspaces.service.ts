@@ -1,9 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { UserRole, WorkspaceRole } from '@prisma/client';
+import { AccessService } from '../auth/access.service';
+import { AuthenticatedUser } from '../auth/types/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly accessService: AccessService,
+  ) {}
 
   async createWorkspace(data: {
     name: string;
@@ -25,17 +31,34 @@ export class WorkspacesService {
         members: {
           create: {
             userId: data.creatorId,
+            role: WorkspaceRole.OWNER,
           },
         },
       },
     });
   }
 
-  async findAll() {
-    return this.prisma.workspace.findMany();
+  async findAll(actor?: AuthenticatedUser) {
+    if (!actor || actor.role === UserRole.ADMIN) {
+      return this.prisma.workspace.findMany();
+    }
+
+    return this.prisma.workspace.findMany({
+      where: {
+        members: {
+          some: {
+            userId: actor.id,
+          },
+        },
+      },
+    });
   }
 
-  async findById(id: string) {
+  async findById(id: string, actor?: AuthenticatedUser) {
+    if (actor) {
+      await this.accessService.ensureWorkspaceMemberOrAdmin(actor.id, id);
+    }
+
     const workspace = await this.prisma.workspace.findUnique({
       where: { id },
     });

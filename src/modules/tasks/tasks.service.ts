@@ -1,15 +1,19 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TaskPriority, TaskStatus } from '@prisma/client';
+import { TaskPriority, TaskStatus, UserRole } from '@prisma/client';
+import { AccessService } from '../auth/access.service';
+import { AuthenticatedUser } from '../auth/types/authenticated-user.interface';
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly accessService: AccessService,
+  ) {}
 
   async createTask(data: {
     title: string;
@@ -44,18 +48,10 @@ export class TasksService {
       throw new NotFoundException('User not found');
     }
 
-    const authorMembership = await this.prisma.workspaceMember.findUnique({
-      where: {
-        userId_workspaceId: {
-          userId: data.authorId,
-          workspaceId: project.workspaceId,
-        },
-      },
-    });
-
-    if (!authorMembership) {
-      throw new ForbiddenException('User is not a workspace member');
-    }
+    await this.accessService.ensureWorkspaceMemberOrAdmin(
+      data.authorId,
+      project.workspaceId,
+    );
 
     if (data.assigneeId) {
       const assignee = await this.prisma.user.findUnique({
@@ -66,18 +62,10 @@ export class TasksService {
         throw new NotFoundException('User not found');
       }
 
-      const assigneeMembership = await this.prisma.workspaceMember.findUnique({
-        where: {
-          userId_workspaceId: {
-            userId: data.assigneeId,
-            workspaceId: project.workspaceId,
-          },
-        },
-      });
-
-      if (!assigneeMembership) {
-        throw new ForbiddenException('User is not a workspace member');
-      }
+      await this.accessService.ensureWorkspaceMemberOrAdmin(
+        data.assigneeId,
+        project.workspaceId,
+      );
     }
 
     return this.prisma.task.create({
@@ -93,10 +81,18 @@ export class TasksService {
     });
   }
 
-  async assignUser(data: { taskId: string; assigneeId: string }) {
+  async assignUser(data: {
+    taskId: string;
+    assigneeId: string;
+    actorId?: string;
+  }) {
+    if (data.actorId) {
+      await this.accessService.ensureTaskOwnerOrAdmin(data.actorId, data.taskId);
+    }
+
     const task = await this.prisma.task.findUnique({
       where: { id: data.taskId },
-      include: {
+      select: {
         project: {
           select: {
             workspaceId: true,
@@ -117,18 +113,10 @@ export class TasksService {
       throw new NotFoundException('User not found');
     }
 
-    const membership = await this.prisma.workspaceMember.findUnique({
-      where: {
-        userId_workspaceId: {
-          userId: data.assigneeId,
-          workspaceId: task.project.workspaceId,
-        },
-      },
-    });
-
-    if (!membership) {
-      throw new ForbiddenException('User is not a workspace member');
-    }
+    await this.accessService.ensureWorkspaceMemberOrAdmin(
+      data.assigneeId,
+      task.project.workspaceId,
+    );
 
     return this.prisma.task.update({
       where: { id: data.taskId },
@@ -136,9 +124,17 @@ export class TasksService {
     });
   }
 
-  async changeStatus(data: { taskId: string; status: TaskStatus }) {
+  async changeStatus(data: {
+    taskId: string;
+    status: TaskStatus;
+    actorId?: string;
+  }) {
     if (!Object.values(TaskStatus).includes(data.status)) {
       throw new BadRequestException('Invalid task status');
+    }
+
+    if (data.actorId) {
+      await this.accessService.ensureTaskMemberOrAdmin(data.actorId, data.taskId);
     }
 
     const task = await this.prisma.task.findUnique({
@@ -155,11 +151,31 @@ export class TasksService {
     });
   }
 
-  async findAll() {
-    return this.prisma.task.findMany();
+  async findAll(actor?: AuthenticatedUser) {
+    if (!actor || actor.role === UserRole.ADMIN) {
+      return this.prisma.task.findMany();
+    }
+
+    return this.prisma.task.findMany({
+      where: {
+        project: {
+          workspace: {
+            members: {
+              some: {
+                userId: actor.id,
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
-  async findById(id: string) {
+  async findById(id: string, actor?: AuthenticatedUser) {
+    if (actor) {
+      await this.accessService.ensureTaskMemberOrAdmin(actor.id, id);
+    }
+
     const task = await this.prisma.task.findUnique({
       where: { id },
     });
@@ -171,13 +187,17 @@ export class TasksService {
     return task;
   }
 
-  async findByProject(projectId: string) {
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-    });
+  async findByProject(projectId: string, actor?: AuthenticatedUser) {
+    if (actor) {
+      await this.accessService.ensureProjectMemberOrAdmin(actor.id, projectId);
+    } else {
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+      });
 
-    if (!project) {
-      throw new NotFoundException('Project not found');
+      if (!project) {
+        throw new NotFoundException('Project not found');
+      }
     }
 
     return this.prisma.task.findMany({

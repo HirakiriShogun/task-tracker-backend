@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { TaskPriority, TaskStatus } from '@prisma/client';
+import { AccessService } from '../auth/access.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { safeUserSelect } from '../users/safe-user.select';
 
 type StatusCounts = {
   TODO: number;
@@ -16,15 +18,22 @@ type PriorityCounts = {
 
 @Injectable()
 export class BffService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly accessService: AccessService,
+  ) {}
 
-  async getWorkspaceOverview(id: string) {
+  async getWorkspaceOverview(id: string, actorId: string) {
+    await this.accessService.ensureWorkspaceMemberOrAdmin(actorId, id);
+
     const workspace = await this.prisma.workspace.findUnique({
       where: { id },
       include: {
         members: {
           include: {
-            user: true,
+            user: {
+              select: safeUserSelect,
+            },
           },
           orderBy: {
             joinedAt: 'asc',
@@ -84,7 +93,9 @@ export class BffService {
     };
   }
 
-  async getProjectOverview(id: string) {
+  async getProjectOverview(id: string, actorId: string) {
+    await this.accessService.ensureProjectMemberOrAdmin(actorId, id);
+
     const project = await this.prisma.project.findUnique({
       where: { id },
       include: {
@@ -140,12 +151,18 @@ export class BffService {
     };
   }
 
-  async getTaskDetails(id: string) {
+  async getTaskDetails(id: string, actorId: string) {
+    await this.accessService.ensureTaskMemberOrAdmin(actorId, id);
+
     const task = await this.prisma.task.findUnique({
       where: { id },
       include: {
-        author: true,
-        assignee: true,
+        author: {
+          select: safeUserSelect,
+        },
+        assignee: {
+          select: safeUserSelect,
+        },
         project: {
           include: {
             workspace: true,
@@ -153,7 +170,9 @@ export class BffService {
         },
         comments: {
           include: {
-            author: true,
+            author: {
+              select: safeUserSelect,
+            },
           },
           orderBy: {
             createdAt: 'asc',

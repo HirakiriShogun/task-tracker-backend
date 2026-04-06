@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from './modules/auth/auth.module';
 import { BffModule } from './modules/bff/bff.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { TaskTrackerGraphqlModule } from './modules/graphql/graphql.module';
@@ -13,6 +14,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 @Module({
   imports: [
     PrismaModule,
+    AuthModule,
     BffModule,
     IntegrationsModule,
     UsersModule,

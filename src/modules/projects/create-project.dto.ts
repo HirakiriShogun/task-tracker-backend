@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateProjectDto {
   @IsString()
@@ -13,5 +13,6 @@ export class CreateProjectDto {
   workspaceId: string;
 
   @IsUUID()
-  creatorId: string;
+  @IsOptional()
+  creatorId?: string;
 }
