@@ -1,9 +1,15 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { AccessService } from '../auth/access.service';
+import { AuthenticatedUser } from '../auth/types/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly accessService: AccessService,
+  ) {}
 
   async createProject(data: {
     name: string;
@@ -19,18 +25,10 @@ export class ProjectsService {
       throw new NotFoundException('Workspace not found');
     }
 
-    const member = await this.prisma.workspaceMember.findUnique({
-      where: {
-        userId_workspaceId: {
-          userId: data.userId,
-          workspaceId: data.workspaceId,
-        },
-      },
-    });
-
-    if (!member) {
-      throw new ForbiddenException('User is not a workspace member');
-    }
+    await this.accessService.ensureWorkspaceOwnerOrAdmin(
+      data.userId,
+      data.workspaceId,
+    );
 
     return this.prisma.project.create({
       data: {
@@ -41,11 +39,29 @@ export class ProjectsService {
     });
   }
 
-  async findAll() {
-    return this.prisma.project.findMany();
+  async findAll(actor?: AuthenticatedUser) {
+    if (!actor || actor.role === UserRole.ADMIN) {
+      return this.prisma.project.findMany();
+    }
+
+    return this.prisma.project.findMany({
+      where: {
+        workspace: {
+          members: {
+            some: {
+              userId: actor.id,
+            },
+          },
+        },
+      },
+    });
   }
 
-  async findById(id: string) {
+  async findById(id: string, actor?: AuthenticatedUser) {
+    if (actor) {
+      await this.accessService.ensureProjectMemberOrAdmin(actor.id, id);
+    }
+
     const project = await this.prisma.project.findUnique({
       where: { id },
     });
@@ -57,13 +73,17 @@ export class ProjectsService {
     return project;
   }
 
-  async findByWorkspace(workspaceId: string) {
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-    });
+  async findByWorkspace(workspaceId: string, actor?: AuthenticatedUser) {
+    if (actor) {
+      await this.accessService.ensureWorkspaceMemberOrAdmin(actor.id, workspaceId);
+    } else {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+      });
 
-    if (!workspace) {
-      throw new NotFoundException('Workspace not found');
+      if (!workspace) {
+        throw new NotFoundException('Workspace not found');
+      }
     }
 
     return this.prisma.project.findMany({
