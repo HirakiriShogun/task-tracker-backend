@@ -1,6 +1,10 @@
-FROM nginx:1.27-alpine
+FROM node:24-bookworm-slim
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY dist /usr/share/nginx/html
+WORKDIR /app
+
+COPY dist ./dist
+COPY server.js ./server.js
 
 EXPOSE 80
+
+CMD ["node", "server.js"]
