@@ -6,7 +6,7 @@ DATABASE_URL_VALUE="${DATABASE_URL:?DATABASE_URL is required}"
 wait_for_database() {
   local attempts=0
 
-  until pg_isready --dbname="$DATABASE_URL_VALUE" >/dev/null 2>&1; do
+  until psql "$DATABASE_URL_VALUE" -c 'SELECT 1' >/dev/null 2>&1; do
     attempts=$((attempts + 1))
 
     if [ "$attempts" -ge 30 ]; then
