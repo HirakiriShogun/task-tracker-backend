@@ -7,7 +7,8 @@ COPY tsconfig.json tsconfig.app.json tsconfig.node.json ./
 COPY vite.config.ts index.html ./
 COPY src ./src
 
-RUN npm ci
+RUN npm ci --ignore-scripts
+RUN node node_modules/esbuild/install.js
 RUN npm run build
 
 FROM nginx:1.27-alpine
