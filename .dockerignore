@@ -1,0 +1,9 @@
+.git
+.gitignore
+node_modules
+dist
+coverage
+.tmp-nest-out.log
+.tmp-nest-err.log
+frontend/node_modules
+frontend/dist

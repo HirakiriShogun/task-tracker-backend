@@ -1,9 +1,13 @@
+import { existsSync } from 'node:fs';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  process.loadEnvFile();
+  if (existsSync('.env')) {
+    process.loadEnvFile();
+  }
+
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(
     new ValidationPipe({
