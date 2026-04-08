@@ -9,6 +9,20 @@ export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-task_tracker}"
 mkdir -p "$PGDATA"
 chown -R postgres:postgres "$PGDATA"
 
+ensure_pg_hba() {
+  local pg_hba_file="$PGDATA/pg_hba.conf"
+
+  touch "$pg_hba_file"
+
+  if ! grep -q 'host all all 0.0.0.0/0 scram-sha-256' "$pg_hba_file"; then
+    printf '\nhost all all 0.0.0.0/0 scram-sha-256\n' >>"$pg_hba_file"
+  fi
+
+  if ! grep -q 'host all all ::/0 scram-sha-256' "$pg_hba_file"; then
+    printf 'host all all ::/0 scram-sha-256\n' >>"$pg_hba_file"
+  fi
+}
+
 run_psql() {
   PGPASSWORD='' psql \
     -h 127.0.0.1 \
@@ -21,6 +35,7 @@ run_psql() {
 
 if [ ! -s "$PGDATA/PG_VERSION" ]; then
   su postgres -c "/usr/lib/postgresql/15/bin/initdb -D '$PGDATA' --username=postgres --auth-local=trust --auth-host=trust"
+  ensure_pg_hba
 
   su postgres -c "/usr/lib/postgresql/15/bin/pg_ctl -D '$PGDATA' -w -o \"-c listen_addresses='127.0.0.1' -c unix_socket_directories=''\" start"
 
@@ -44,5 +59,7 @@ SQL
 
   su postgres -c "/usr/lib/postgresql/15/bin/pg_ctl -D '$PGDATA' -m fast -w stop"
 fi
+
+ensure_pg_hba
 
 exec su postgres -c "/usr/lib/postgresql/15/bin/postgres -D '$PGDATA' -c listen_addresses='0.0.0.0' -c unix_socket_directories=''"
