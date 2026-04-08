@@ -35,4 +35,4 @@ if [ "$(schema_initialized)" != "t" ]; then
   apply_migrations
 fi
 
-exec node dist/main
+exec node dist/src/main.js
