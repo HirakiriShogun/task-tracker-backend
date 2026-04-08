@@ -8,6 +8,7 @@ COPY vite.config.ts index.html ./
 COPY src ./src
 
 RUN npm ci --ignore-scripts
+RUN chmod +x node_modules/esbuild/bin/esbuild node_modules/@esbuild/linux-x64/bin/esbuild
 RUN node node_modules/esbuild/install.js
 RUN npm run build
 
