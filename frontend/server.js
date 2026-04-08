@@ -30,15 +30,34 @@ function sendFile(filePath, response) {
   pipeline(fs.createReadStream(filePath), response, () => {});
 }
 
+async function readRequestBody(request) {
+  const chunks = [];
+
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  return chunks.length > 0 ? Buffer.concat(chunks) : undefined;
+}
+
 async function proxyRequest(request, response) {
   const upstreamPath = request.url.startsWith('/api/')
     ? request.url.replace(/^\/api/, '')
     : request.url;
   const targetUrl = new URL(upstreamPath, backendBaseUrl);
   const headers = new Headers();
+  const body =
+    request.method === 'GET' || request.method === 'HEAD'
+      ? undefined
+      : await readRequestBody(request);
 
   for (const [key, value] of Object.entries(request.headers)) {
-    if (typeof value === 'string') {
+    if (
+      typeof value === 'string' &&
+      !['host', 'connection', 'content-length', 'transfer-encoding'].includes(
+        key.toLowerCase(),
+      )
+    ) {
       headers.set(key, value);
     }
   }
@@ -48,11 +67,7 @@ async function proxyRequest(request, response) {
   const upstream = await fetch(targetUrl, {
     method: request.method,
     headers,
-    body:
-      request.method === 'GET' || request.method === 'HEAD'
-        ? undefined
-        : request,
-    duplex: 'half',
+    body,
   });
 
   const responseHeaders = {};
