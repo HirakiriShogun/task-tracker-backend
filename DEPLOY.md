@@ -15,6 +15,14 @@ cp .env.production.example .env.production
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
+Frontend в production берётся из уже собранной папки `frontend/dist`, поэтому после изменений UI перед коммитом нужно обновлять билд локально:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
 ## 3. Проверка
 
 Frontend:
