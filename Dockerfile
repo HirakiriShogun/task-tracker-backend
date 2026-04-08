@@ -9,6 +9,7 @@ COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 COPY src ./src
 
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
+ENV DATABASE_URL=postgresql://postgres:postgres@localhost:5432/task_tracker?schema=public
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
