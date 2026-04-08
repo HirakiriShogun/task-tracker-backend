@@ -31,7 +31,10 @@ function sendFile(filePath, response) {
 }
 
 async function proxyRequest(request, response) {
-  const targetUrl = new URL(request.url, backendBaseUrl);
+  const upstreamPath = request.url.startsWith('/api/')
+    ? request.url.replace(/^\/api/, '')
+    : request.url;
+  const targetUrl = new URL(upstreamPath, backendBaseUrl);
   const headers = new Headers();
 
   for (const [key, value] of Object.entries(request.headers)) {
