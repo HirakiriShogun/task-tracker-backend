@@ -2,11 +2,12 @@
 set -Eeuo pipefail
 
 DATABASE_URL_VALUE="${DATABASE_URL:?DATABASE_URL is required}"
+PSQL_DATABASE_URL="${DATABASE_URL_VALUE%%\?*}"
 
 wait_for_database() {
   local attempts=0
 
-  until psql "$DATABASE_URL_VALUE" -c 'SELECT 1' >/dev/null 2>&1; do
+  until psql "$PSQL_DATABASE_URL" -c 'SELECT 1' >/dev/null 2>&1; do
     attempts=$((attempts + 1))
 
     if [ "$attempts" -ge 30 ]; then
@@ -19,12 +20,12 @@ wait_for_database() {
 }
 
 schema_initialized() {
-  psql "$DATABASE_URL_VALUE" -tAc "SELECT to_regclass('public.\"User\"') IS NOT NULL" | tr -d '[:space:]'
+  psql "$PSQL_DATABASE_URL" -tAc "SELECT to_regclass('public.\"User\"') IS NOT NULL" | tr -d '[:space:]'
 }
 
 apply_migrations() {
   for file in /app/prisma/migrations/*/migration.sql; do
-    psql "$DATABASE_URL_VALUE" -v ON_ERROR_STOP=1 -f "$file"
+    psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
   done
 }
 
